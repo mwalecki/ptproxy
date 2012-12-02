@@ -1,0 +1,6 @@
+[submodule "nf"]
+	path = nf
+	url = git@github.com:mwalecki/nf.git
+[submodule "serialcomm"]
+	path = serialcomm
+	url = git@github.com:mwalecki/serialcomm.git
