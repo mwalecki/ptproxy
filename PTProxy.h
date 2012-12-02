@@ -8,9 +8,8 @@
 #ifndef PTPROXY_H_
 #define PTPROXY_H_
 
-#include "nfv2.h"
-#include "mycrc.h"
-#include "serialcomm.hpp"
+#include "nf/nfv2.h"
+#include "serialcomm/serialcomm.hpp"
 #include <iostream>
 
 #define DEFAULT_NFV2_BAUD B57600

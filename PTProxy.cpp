@@ -9,7 +9,7 @@
 
 PTProxy::PTProxy(std::string port) : portName(port) {
 	NFv2_Config2(&NFComBuf, NF_MasterAddress, NF_AddressBase);
-	crcInit();
+	NFv2_CrcInit();
 	CommPort = new SerialComm(portName, DEFAULT_NFV2_BAUD);
 	if (! (CommPort->isConnected()) ) {
 		std::cout << "Connection failed!" << std::endl;
