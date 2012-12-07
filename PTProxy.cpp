@@ -44,7 +44,23 @@ void PTProxy::nextStep(void){
 	}
 }
 
-void PTProxy::feedError(float newdx, float newdy){
-	dx = newdx;
-	dy = newdy;
+bool PTProxy::isConnected() const {
+	return (CommPort->isConnected());
+}
+
+void PTProxy::setMotorSpeed(float sx, float sy){
+	dx = sx;
+	dy = sy;
+}
+
+void PTProxy::setJointSpeed(float sx, float sy) {
+}
+
+void PTProxy::setJointPos(float px, float py) {
+}
+
+void PTProxy::getJointSpeed(float& sx, float& sy) {
+}
+
+void PTProxy::getJointPos(float& px, float& py) {
 }

@@ -16,12 +16,57 @@
 #define COMM_BUFSZ 256
 #define COMMAND_ARRAY_SZ 16
 
+/*!
+ *
+ */
 class PTProxy {
 public:
+	/*!
+	 *
+	 */
 	PTProxy(std::string port);
+
+	/*!
+	 *
+	 */
 	virtual ~PTProxy();
+
+	/*!
+	 *
+	 */
+	bool isConnected() const;
+
+	/*!
+	 *
+	 */
 	void nextStep(void);
-	void feedError(float newdx, float newdy);
+
+	/*!
+	 *
+	 */
+	void setMotorSpeed(float sx, float sy);
+
+	/*!
+	 *
+	 */
+	void setJointSpeed(float sx, float sy);
+
+	/*!
+	 *
+	 */
+	void setJointPos(float px, float py);
+
+	/*!
+	 *
+	 */
+	void getJointSpeed(float & sx, float & sy);
+
+	/*!
+	 *
+	 */
+	void getJointPos(float & px, float & py);
+
+
 private:
 	NF_STRUCT_ComBuf NFComBuf;
 	SerialComm *CommPort;
