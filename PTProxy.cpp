@@ -54,6 +54,7 @@ void PTProxy::setMotorSpeed(float sx, float sy){
 }
 
 void PTProxy::setJointSpeed(float sx, float sy) {
+	setMotorSpeed(sx * xJointsToMotors, sy * yJointsToMotors);
 }
 
 void PTProxy::setJointPos(float px, float py) {

@@ -16,6 +16,9 @@
 #define COMM_BUFSZ 256
 #define COMMAND_ARRAY_SZ 16
 
+const float xJointsToMotors	10000;
+const float yJointsToMotors	10000;
+
 /*!
  *
  */
