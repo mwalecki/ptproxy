@@ -104,6 +104,8 @@ int PTProxy::setJointPosition(float px, float py) {
 }
 
 void PTProxy::getMotorSpeed(float& sx, float& sy) {
+	sx = NFComBuf.ReadDrivesSpeed.data[0];
+	sy = NFComBuf.ReadDrivesSpeed.data[1];
 }
 
 void PTProxy::getMotorPosition(float& px, float& py) {

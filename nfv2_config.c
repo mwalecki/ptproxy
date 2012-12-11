@@ -21,6 +21,9 @@ void NFv2_Config2(NF_STRUCT_ComBuf *NFComBuf, uint8_t myAddress, uint8_t slaveAd
     NFComBuf->ReadDrivesPosition.addr[0] = slaveAddress;
     NFComBuf->ReadDrivesPosition.addr[1] = slaveAddress;
 
+    NFComBuf->ReadDrivesSpeed.addr[0] = slaveAddress;
+    NFComBuf->ReadDrivesSpeed.addr[1] = slaveAddress;
+
     NFComBuf->ReadDrivesStatus.addr[0] = slaveAddress;
     NFComBuf->ReadDrivesStatus.addr[1] = slaveAddress;
 

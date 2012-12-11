@@ -27,6 +27,7 @@
 	#define NF_BUFSZ_SetDrivesMaxPosition	2
 	#define NF_BUFSZ_ReadDrivesPosition		2
 	#define NF_BUFSZ_ReadDrivesCurrent		2
+	#define NF_BUFSZ_ReadDrivesSpeed		2
 	#define NF_BUFSZ_SetDrivesMisc			2
 	#define NF_BUFSZ_ReadDrivesStatus		2
 	
