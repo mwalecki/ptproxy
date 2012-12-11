@@ -16,8 +16,8 @@
 #define COMM_BUFSZ 256
 #define COMMAND_ARRAY_SZ 16
 
-const float xJointsToMotors	10000;
-const float yJointsToMotors	10000;
+const float xJointsToMotors = 10000;
+const float yJointsToMotors = 10000;
 
 /*!
  *
@@ -47,17 +47,42 @@ public:
 	/*!
 	 *
 	 */
-	void setMotorSpeed(float sx, float sy);
+	void startSynchronization();
 
 	/*!
 	 *
 	 */
-	void setJointSpeed(float sx, float sy);
+	bool isSynchronized();
 
 	/*!
 	 *
 	 */
-	void setJointPos(float px, float py);
+	int setMotorSpeed(float sx, float sy);
+
+	/*!
+	 *
+	 */
+	int setMotorPosition(float sx, float sy);
+
+	/*!
+	 *
+	 */
+	int setJointSpeed(float sx, float sy);
+
+	/*!
+	 *
+	 */
+	int setJointPosition(float px, float py);
+
+	/*!
+	 *
+	 */
+	void getMotorSpeed(float & sx, float & sy);
+
+	/*!
+	 *
+	 */
+	void getMotorPosition(float & px, float & py);
 
 	/*!
 	 *
@@ -67,7 +92,7 @@ public:
 	/*!
 	 *
 	 */
-	void getJointPos(float & px, float & py);
+	void getJointPosition(float & px, float & py);
 
 
 private:
@@ -77,12 +102,8 @@ private:
 	uint8_t rxBuf[COMM_BUFSZ];
 	uint8_t txBuf[COMM_BUFSZ];
 	uint8_t commandArray[COMMAND_ARRAY_SZ];
-	uint8_t rxCnt, txCnt, commandCnt;
-
-	float dx, dy;
-	int32_t currentPosX, currentPosY;
-
-
+	uint8_t rxCommandArray[COMMAND_ARRAY_SZ];
+	uint8_t rxCnt, txCnt, commandCnt, rxCommandCnt;
 };
 
 #endif /* PTPROXY_H_ */
