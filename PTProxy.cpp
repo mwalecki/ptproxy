@@ -17,9 +17,12 @@ PTProxy::PTProxy(std::string port) : portName(port) {
 	else{
 		std::cout << "Connected to " << port << std::endl;
 	}
-
 	rxCnt = 0;
 	commandCnt = 0;
+	// Set hardware-specific calibration
+	setJointsToMotorsRatio(DEFAULT_X_GEAR_RATIO * DEFAULT_X_ENCODER_RES / (2 * M_PI),
+			DEFAULT_Y_GEAR_RATIO * DEFAULT_Y_ENCODER_RES / (2 * M_PI));
+	setMotorsOffset(DEFAULT_X_MOTOR_OFFSET, DEFAULT_Y_MOTOR_OFFSET);
 }
 
 PTProxy::~PTProxy() {
@@ -96,11 +99,11 @@ int PTProxy::setMotorPosition(float px, float py){
 }
 
 int PTProxy::setJointSpeed(float sx, float sy) {
-	return setMotorSpeed(sx * xJointsToMotors, sy * yJointsToMotors);
+	return setMotorSpeed(sx * xJointsToMotorsRatio, sy * yJointsToMotorsRatio);
 }
 
 int PTProxy::setJointPosition(float px, float py) {
-	return setMotorPosition(px * xJointsToMotors, py * yJointsToMotors);
+	return setMotorPosition(px * xJointsToMotorsRatio, py * yJointsToMotorsRatio);
 }
 
 void PTProxy::getMotorSpeed(float& sx, float& sy) {
@@ -109,14 +112,36 @@ void PTProxy::getMotorSpeed(float& sx, float& sy) {
 }
 
 void PTProxy::getMotorPosition(float& px, float& py) {
-	px = NFComBuf.ReadDrivesPosition.data[0];
-	py = NFComBuf.ReadDrivesPosition.data[1];
+	px = NFComBuf.ReadDrivesPosition.data[0] - xMotorsOffset;
+	py = NFComBuf.ReadDrivesPosition.data[1] - yMotorsOffset;
 }
 
 void PTProxy::getJointSpeed(float& sx, float& sy) {
+	sx = NFComBuf.ReadDrivesSpeed.data[0] / xJointsToMotorsRatio;
+	sy = NFComBuf.ReadDrivesSpeed.data[1] / yJointsToMotorsRatio;
 }
 
 void PTProxy::getJointPosition(float& px, float& py) {
-	px = NFComBuf.ReadDrivesPosition.data[0] / xJointsToMotors;
-	py = NFComBuf.ReadDrivesPosition.data[1] / yJointsToMotors;
+	px = (NFComBuf.ReadDrivesPosition.data[0] - xMotorsOffset) / xJointsToMotorsRatio;
+	py = (NFComBuf.ReadDrivesPosition.data[1] - yMotorsOffset) / yJointsToMotorsRatio;
+}
+
+void PTProxy::setJointsToMotorsRatio(float jtmx, float jtmy){
+	xJointsToMotorsRatio = jtmx;
+	yJointsToMotorsRatio = jtmy;
+}
+
+void PTProxy::getJointsToMotorsRatio(float & jtmx, float & jtmy){
+	jtmx = xJointsToMotorsRatio;
+	jtmy = yJointsToMotorsRatio;
+}
+
+void PTProxy::setMotorsOffset(int offx, int offy){
+	xMotorsOffset = offx;
+	yMotorsOffset = offy;
+}
+
+void PTProxy::getMotorsOffset(int & offx, int & offy){
+	offx = xMotorsOffset;
+	offy = yMotorsOffset;
 }
