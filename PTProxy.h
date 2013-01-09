@@ -67,7 +67,12 @@ public:
 	/*!
 	 *
 	 */
-	int setMotorPosition(float sx, float sy);
+	int setMotorPosition(float px, float py);
+
+	/*!
+	 *
+	 */
+	int setMotorPositionWithSpeed(float px, float py, float sx, float sy);
 
 	/*!
 	 *
@@ -78,6 +83,11 @@ public:
 	 *
 	 */
 	int setJointPosition(float px, float py);
+
+	/*!
+	 *
+	 */
+	int setJointPositionWithSpeed(float px, float py, float sx, float sy);
 
 	/*!
 	 *

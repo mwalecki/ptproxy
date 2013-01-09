@@ -98,12 +98,38 @@ int PTProxy::setMotorPosition(float px, float py){
 	return 0;
 }
 
+int PTProxy::setMotorPositionWithSpeed(float px, float py, float sx, float sy){
+	if(!isSynchronized())
+		return 1;
+	NFComBuf.SetDrivesSpeed.data[0] = sx;
+	NFComBuf.SetDrivesSpeed.data[1] = sy;
+	commandArray[commandCnt++] = NF_COMMAND_SetDrivesSpeed;
+	NFComBuf.SetDrivesPosition.data[0] = px;
+	NFComBuf.SetDrivesPosition.data[1] = py;
+	commandArray[commandCnt++] = NF_COMMAND_SetDrivesPosition;
+
+	if((NFComBuf.SetDrivesMode.data[0] != NF_DrivesMode_POSITION)
+			|| (NFComBuf.SetDrivesMode.data[1] != NF_DrivesMode_POSITION)){
+		NFComBuf.SetDrivesMode.data[0] = NF_DrivesMode_POSITION;
+		NFComBuf.SetDrivesMode.data[1] = NF_DrivesMode_POSITION;
+		commandArray[commandCnt++] = NF_COMMAND_SetDrivesMode;
+	}
+	return 0;
+}
+
 int PTProxy::setJointSpeed(float sx, float sy) {
-	return setMotorSpeed(sx * xJointsToMotorsRatio, sy * yJointsToMotorsRatio);
+	return setMotorSpeed(sx * xJointsToMotorsRatio * 10, sy * yJointsToMotorsRatio * 10);
 }
 
 int PTProxy::setJointPosition(float px, float py) {
-	return setMotorPosition(px * xJointsToMotorsRatio, py * yJointsToMotorsRatio);
+	return setMotorPosition(px * xJointsToMotorsRatio + xMotorsOffset, py * yJointsToMotorsRatio + yMotorsOffset);
+}
+
+int PTProxy::setJointPositionWithSpeed(float px, float py, float sx, float sy) {
+	return setMotorPositionWithSpeed(px * xJointsToMotorsRatio + xMotorsOffset,
+									 py * yJointsToMotorsRatio + yMotorsOffset,
+									 sx * xJointsToMotorsRatio,
+									 sy * yJointsToMotorsRatio);
 }
 
 void PTProxy::getMotorSpeed(float& sx, float& sy) {
