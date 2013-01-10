@@ -118,7 +118,7 @@ int PTProxy::setMotorPositionWithSpeed(float px, float py, float sx, float sy){
 }
 
 int PTProxy::setJointSpeed(float sx, float sy) {
-	return setMotorSpeed(sx * xJointsToMotorsRatio * 10, sy * yJointsToMotorsRatio * 10);
+	return setMotorSpeed(sx * xJointsToMotorsRatio, sy * yJointsToMotorsRatio);
 }
 
 int PTProxy::setJointPosition(float px, float py) {
