@@ -10,6 +10,7 @@
 
 #include "nf/nfv2.h"
 #include "serialcomm/serialcomm.hpp"
+#include "can/MotorController.h"
 #include <iostream>
 #include <math.h>
 
@@ -132,6 +133,7 @@ public:
 private:
 	NF_STRUCT_ComBuf NFComBuf;
 	SerialComm *CommPort;
+	MotorController *can;
 	std::string portName;
 	uint8_t rxBuf[COMM_BUFSZ];
 	uint8_t txBuf[COMM_BUFSZ];
