@@ -6,8 +6,7 @@
 
 #define NF_BroadcastAddress 0xff
 #define NF_MasterAddress	0xfe
-#define NF_AddressBase		0x01  
-#define NF_AddressLCDModule	0x10
+#define NF_AddressBase		0x10
 
 /*
 * Uncomment and update buffers' size [no of param set instances] for commands
