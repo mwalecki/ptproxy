@@ -8,17 +8,22 @@
 #include "PTProxy.h"
 
 PTProxy::PTProxy(std::string port) : portName(port) {
-	NFv2_Config2(&NFComBuf, NF_MasterAddress, NF_AddressBase);
-	NFv2_CrcInit();
-	CommPort = new SerialComm(portName, DEFAULT_NFV2_BAUD);
-	if (! (CommPort->isConnected()) ) {
-		std::cout << "Connection failed!" << std::endl;
+	if(port.find("can") == std::string::npos) {
+		NFv2_Config2(&NFComBuf, NF_MasterAddress, NF_AddressBase);
+		NFv2_CrcInit();
+		CommPort = new SerialComm(portName, DEFAULT_NFV2_BAUD);
+		if (! (CommPort->isConnected()) ) {
+			std::cout << "Connection failed!" << std::endl;
+		} else{
+			std::cout << "Connected to " << port << std::endl;
+		}
+		rxCnt = 0;
+		commandCnt = 0;
+		can = 0;
+	} else {
+		can = new MotorController(portName);
+		CommPort = 0;
 	}
-	else{
-		std::cout << "Connected to " << port << std::endl;
-	}
-	rxCnt = 0;
-	commandCnt = 0;
 	// Set hardware-specific calibration
 	setJointsToMotorsRatio(DEFAULT_X_GEAR_RATIO * DEFAULT_X_ENCODER_RES / (2 * M_PI),
 			DEFAULT_Y_GEAR_RATIO * DEFAULT_Y_ENCODER_RES / (2 * M_PI));
@@ -33,30 +38,52 @@ bool PTProxy::isConnected() const {
 }
 
 void PTProxy::nextStep(void){
-	// Always read position
-	commandArray[commandCnt++] = NF_COMMAND_ReadDrivesPosition;
-	// Always read status
-	commandArray[commandCnt++] = NF_COMMAND_ReadDrivesStatus;
+	if(CommPort != 0) {
+		// Always read position
+		commandArray[commandCnt++] = NF_COMMAND_ReadDrivesPosition;
+		// Always read status
+		commandArray[commandCnt++] = NF_COMMAND_ReadDrivesStatus;
 
-	// Try to receive a reply to the previous command
-	while(CommPort->read(&(rxBuf[rxCnt]), 1) > 0){
-		NF_Interpreter(&NFComBuf, (uint8_t*)rxBuf, (uint8_t*)&rxCnt, rxCommandArray, &rxCommandCnt);
+		// Try to receive a reply to the previous command
+		while(CommPort->read(&(rxBuf[rxCnt]), 1) > 0){
+			NF_Interpreter(&NFComBuf, (uint8_t*)rxBuf, (uint8_t*)&rxCnt, rxCommandArray, &rxCommandCnt);
+		}
+
+		// If a command send requested
+		if(commandCnt > 0) {
+			txCnt = NF_MakeCommandFrame(&NFComBuf, txBuf, (const uint8_t*)commandArray, commandCnt, NF_AddressBase);
+			// Clear communication request
+			commandCnt = 0;
+			// Send command frame to motor controllers
+			CommPort->write(txBuf, txCnt);
+		}
 	}
-
-	// If a command send requested
-	if(commandCnt > 0) {
-		txCnt = NF_MakeCommandFrame(&NFComBuf, txBuf, (const uint8_t*)commandArray, commandCnt, NF_AddressBase);
-		// Clear communication request
-		commandCnt = 0;
-		// Send command frame to motor controllers
-		CommPort->write(txBuf, txCnt);
+	
+	if(can != 0) {
+		uint32_t status1, status2;
+		uint8_t mode1, mode2;
+		can->getStatus2(0, status1, mode1, status2, mode2);
+		can->getPosition2(0, NFComBuf.ReadDrivesPosition.data[0], NFComBuf.ReadDrivesPosition.data[1]);
+		
+		NFComBuf.ReadDrivesStatus.data[0] = status1 & 0xFFFF;
+		NFComBuf.ReadDrivesStatus.data[1] = status2 & 0xFFFF;
+		
+		NFComBuf.SetDrivesMode.data[0] = mode1;
+		NFComBuf.SetDrivesMode.data[1] = mode2;
 	}
 }
 
 void PTProxy::startSynchronization(void){
-	NFComBuf.SetDrivesMode.data[0] = NF_DrivesMode_SYNC_POS0;
-	NFComBuf.SetDrivesMode.data[1] = NF_DrivesMode_SYNC_POS0;
-	commandArray[commandCnt++] = NF_COMMAND_SetDrivesMode;
+	if(CommPort != 0){
+		NFComBuf.SetDrivesMode.data[0] = NF_DrivesMode_SYNC_POS0;
+		NFComBuf.SetDrivesMode.data[1] = NF_DrivesMode_SYNC_POS0;
+		commandArray[commandCnt++] = NF_COMMAND_SetDrivesMode;
+	}
+	
+	if(can != 0) {
+		can->setMode(0, NF_DrivesMode_SYNC_POS0);
+		can->setMode(1, NF_DrivesMode_SYNC_POS0);
+	}
 }
 
 bool PTProxy::isSynchronized(){
@@ -69,15 +96,26 @@ bool PTProxy::isSynchronized(){
 int PTProxy::setMotorSpeed(float sx, float sy){
 	if(!isSynchronized())
 		return 1;
-	NFComBuf.SetDrivesSpeed.data[0] = sx;
-	NFComBuf.SetDrivesSpeed.data[1] = sy;
-	commandArray[commandCnt++] = NF_COMMAND_SetDrivesSpeed;
+	if(CommPort != 0) {
+		NFComBuf.SetDrivesSpeed.data[0] = sx;
+		NFComBuf.SetDrivesSpeed.data[1] = sy;
+		commandArray[commandCnt++] = NF_COMMAND_SetDrivesSpeed;
 
-	if((NFComBuf.SetDrivesMode.data[0] != NF_DrivesMode_SPEED)
-			|| (NFComBuf.SetDrivesMode.data[1] != NF_DrivesMode_SPEED)){
-		NFComBuf.SetDrivesMode.data[0] = NF_DrivesMode_SPEED;
-		NFComBuf.SetDrivesMode.data[1] = NF_DrivesMode_SPEED;
-		commandArray[commandCnt++] = NF_COMMAND_SetDrivesMode;
+		if((NFComBuf.SetDrivesMode.data[0] != NF_DrivesMode_SPEED)
+				|| (NFComBuf.SetDrivesMode.data[1] != NF_DrivesMode_SPEED)){
+			NFComBuf.SetDrivesMode.data[0] = NF_DrivesMode_SPEED;
+			NFComBuf.SetDrivesMode.data[1] = NF_DrivesMode_SPEED;
+			commandArray[commandCnt++] = NF_COMMAND_SetDrivesMode;
+		}
+	}
+	
+	if(can != 0) {
+		if((NFComBuf.SetDrivesMode.data[0] != NF_DrivesMode_SPEED)
+				|| (NFComBuf.SetDrivesMode.data[1] != NF_DrivesMode_SPEED)){
+			can->setMode(0, NF_DrivesMode_SPEED);
+			can->setMode(1, NF_DrivesMode_SPEED);
+		}
+		can->setVelocity2(0, (int32_t)sx, (int32_t)sy);
 	}
 	return 0;
 }
@@ -85,15 +123,27 @@ int PTProxy::setMotorSpeed(float sx, float sy){
 int PTProxy::setMotorPosition(float px, float py){
 	if(!isSynchronized())
 		return 1;
-	NFComBuf.SetDrivesPosition.data[0] = px;
-	NFComBuf.SetDrivesPosition.data[1] = py;
-	commandArray[commandCnt++] = NF_COMMAND_SetDrivesPosition;
-
-	if((NFComBuf.SetDrivesMode.data[0] != NF_DrivesMode_POSITION)
-			|| (NFComBuf.SetDrivesMode.data[1] != NF_DrivesMode_POSITION)){
-		NFComBuf.SetDrivesMode.data[0] = NF_DrivesMode_POSITION;
-		NFComBuf.SetDrivesMode.data[1] = NF_DrivesMode_POSITION;
-		commandArray[commandCnt++] = NF_COMMAND_SetDrivesMode;
+	if(CommPort != 0) {
+		NFComBuf.SetDrivesPosition.data[0] = px;
+		NFComBuf.SetDrivesPosition.data[1] = py;
+		commandArray[commandCnt++] = NF_COMMAND_SetDrivesPosition;
+		
+		if((NFComBuf.SetDrivesMode.data[0] != NF_DrivesMode_POSITION)
+				|| (NFComBuf.SetDrivesMode.data[1] != NF_DrivesMode_POSITION)){
+			NFComBuf.SetDrivesMode.data[0] = NF_DrivesMode_POSITION;
+			NFComBuf.SetDrivesMode.data[1] = NF_DrivesMode_POSITION;
+			commandArray[commandCnt++] = NF_COMMAND_SetDrivesMode;
+		}
+	}
+	
+	if(can != 0) {
+		if((NFComBuf.SetDrivesMode.data[0] != NF_DrivesMode_POSITION)
+				|| (NFComBuf.SetDrivesMode.data[1] != NF_DrivesMode_POSITION)){
+			can->setMode(0, NF_DrivesMode_POSITION);
+			can->setMode(1, NF_DrivesMode_POSITION);
+		}
+		
+		can->setPosition2(0, (int32_t)px, (int32_t)py);
 	}
 	return 0;
 }
@@ -101,18 +151,31 @@ int PTProxy::setMotorPosition(float px, float py){
 int PTProxy::setMotorPositionWithSpeed(float px, float py, float sx, float sy){
 	if(!isSynchronized())
 		return 1;
-	NFComBuf.SetDrivesSpeed.data[0] = sx;
-	NFComBuf.SetDrivesSpeed.data[1] = sy;
-	commandArray[commandCnt++] = NF_COMMAND_SetDrivesSpeed;
-	NFComBuf.SetDrivesPosition.data[0] = px;
-	NFComBuf.SetDrivesPosition.data[1] = py;
-	commandArray[commandCnt++] = NF_COMMAND_SetDrivesPosition;
+	if(CommPort != 0) {
+		NFComBuf.SetDrivesSpeed.data[0] = sx;
+		NFComBuf.SetDrivesSpeed.data[1] = sy;
+		commandArray[commandCnt++] = NF_COMMAND_SetDrivesSpeed;
+		NFComBuf.SetDrivesPosition.data[0] = px;
+		NFComBuf.SetDrivesPosition.data[1] = py;
+		commandArray[commandCnt++] = NF_COMMAND_SetDrivesPosition;
 
-	if((NFComBuf.SetDrivesMode.data[0] != NF_DrivesMode_POSITION)
-			|| (NFComBuf.SetDrivesMode.data[1] != NF_DrivesMode_POSITION)){
-		NFComBuf.SetDrivesMode.data[0] = NF_DrivesMode_POSITION;
-		NFComBuf.SetDrivesMode.data[1] = NF_DrivesMode_POSITION;
-		commandArray[commandCnt++] = NF_COMMAND_SetDrivesMode;
+		if((NFComBuf.SetDrivesMode.data[0] != NF_DrivesMode_POSITION)
+				|| (NFComBuf.SetDrivesMode.data[1] != NF_DrivesMode_POSITION)){
+			NFComBuf.SetDrivesMode.data[0] = NF_DrivesMode_POSITION;
+			NFComBuf.SetDrivesMode.data[1] = NF_DrivesMode_POSITION;
+			commandArray[commandCnt++] = NF_COMMAND_SetDrivesMode;
+		}
+	}
+	
+	if(can != 0) {
+		if((NFComBuf.SetDrivesMode.data[0] != NF_DrivesMode_POSITION)
+				|| (NFComBuf.SetDrivesMode.data[1] != NF_DrivesMode_POSITION)){
+			can->setMode(0, NF_DrivesMode_POSITION);
+			can->setMode(1, NF_DrivesMode_POSITION);
+		}
+		
+		can->setVelocity2(0, (int32_t)sx, (int32_t)sy);
+		can->setPosition2(0, (int32_t)px, (int32_t)py);
 	}
 	return 0;
 }
