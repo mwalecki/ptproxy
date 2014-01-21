@@ -9,13 +9,24 @@
 #include <iostream>
 #include <cstring>
 
+#ifndef __XENO__
+	#define rt_dev_socket socket
+	#define rt_dev_setsockopt setsockopt
+	#define rt_dev_bind bind
+	#define rt_dev_recvfrom recvfrom
+	#define rt_dev_sendto sendto
+	#define rt_dev_close close
+#else
+	#include <rtdm/rtcan.h>
+#endif
+
 #include "CANDev.h"
 
 CANDev::CANDev(std::string dev_name) {
   struct sockaddr_can addr;
   struct ifreq ifr;
   
-  if((dev = socket(PF_CAN, SOCK_RAW, CAN_RAW)) < 0) {
+  if((dev = rt_dev_socket(PF_CAN, SOCK_RAW, CAN_RAW)) < 0) {
     std::cout<< "Error while opening socket" << std::endl;
     dev = -1;
   }
@@ -26,16 +37,16 @@ CANDev::CANDev(std::string dev_name) {
   addr.can_family  = AF_CAN;
   addr.can_ifindex = ifr.ifr_ifindex; 
   
-  if(bind(dev, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+  if(rt_dev_bind(dev, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
     std::cout << "Error in socket bind" << std::endl;
-    close(dev);
+    rt_dev_close(dev);
     dev = -1;
   }
 }
 
 CANDev::~CANDev() {
   if(dev > -1) {
-    close(dev);
+	  rt_dev_close(dev);
   }
 }
 
@@ -77,5 +88,47 @@ uint32_t CANDev::waitForReply(uint32_t can_id, uint8_t *data) {
     
     frame_buf.push_back(frame);
   }
+}
+
+
+uint32_t CANDev::AddFilter( const CANDev::Filter& filter ) {
+
+  //std::cout << "RTSocketCAN::AddFilter" << std::endl;
+
+  if( n_filters_ < CANDev::MAX_NUM_FILTERS ){
+
+    /*
+    // Avoid duplicates
+    for( size_t i=0; i<n_filters_; i++ ){
+    if( filters[i].can_mask == filter.mask && filters[i].can_id == filter.id )
+    { return CANBus::ESUCCESS; }
+    }
+    */
+
+    filters_[n_filters_].can_mask = filter.mask_;
+    filters_[n_filters_].can_id   = filter.id_;
+    n_filters_++;
+
+    // Set the filter to the socket
+    int rt_error = 0;
+    if( rt_error = rt_dev_setsockopt(
+    	  dev,
+          SOL_CAN_RAW,
+          CAN_RAW_FILTER,
+          filters_,
+          n_filters_*sizeof(struct can_filter) ) )
+    {
+      std::cerr << "Couldn't set the socket filter ("<<filter.mask_<<", "<<filter.id_<<") on socket descriptor "<<dev<<": " <<strerror(-rt_error)<< std::endl;
+      return 1;
+    }
+
+    return 0;
+  } else {
+    std::cerr << "Reached maximum number of filters." << std::endl;
+    return 1;
+  }
+
+  return 1;
+
 }
 
